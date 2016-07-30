@@ -1,3 +1,11 @@
+/*
+* 
+* Copyright (c) 2016 Toku. All Rights Reserved.
+*
+* Ver1.0
+*
+*/
+
 var Button=android.widget.Button;
 var TextView=android.widget.TextView;
 var Dialog=android.app.Dialog;
