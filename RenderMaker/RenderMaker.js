@@ -1,5 +1,3 @@
-var mcpelauncher=net.zhuoweizhang.mcpelauncher;
-
 var AdapterView=android.widget.AdapterView;
 var ArrayAdapter=android.widget.ArrayAdapter;
 var ListView=android.widget.ListView;
