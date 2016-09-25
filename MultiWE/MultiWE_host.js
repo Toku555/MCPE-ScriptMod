@@ -11,15 +11,19 @@ var AbsoluteLayout=android.widget.AbsoluteLayout;
 var ListView=android.widget.ListView;
 var AdapterView=android.widget.AdapterView;
 var ArrayAdapter=android.widget.ArrayAdapter;
+var EditText=android.widget.EditText;
+var InputType=android.text.InputType;
 
 var display=new android.util.DisplayMetrics();
 Activity.getWindowManager().getDefaultDisplay().getMetrics(display);
 var screen={x:Math.max(display.widthPixels,display.heightPixels),y:Math.min(display.widthPixels,display.heightPixels)};
 
 var m=0;
-var mList=[];
+var mList=["All","Setting"];
 
 var host={
+	id:0,
+	dam:0,
 	pos:{s:{x:null,y:null,z:null},e:{x:null,y:null,z:null}}
 };
 
@@ -170,11 +174,20 @@ var Gui={
 	Base:(function(){
 		var window=new android.widget.PopupWindow(Math.floor(screen.x/4),Math.floor(screen.y));
 		window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.parseColor("#66000000")));
+		main.setOrientation(1);
 		var main=new LinearLayout(Activity);
 		window.setContentView(main);
 		var sub=new AbsoluteLayout(Activity);
 		sub.setBackgroundColor(Color.BLACK);
 		sub.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+		main.addView(sub);
+		
+		var title=new TextView(Activity);
+		title.setTextColor(Color.WHITE);
+		title.setTextSize(16);
+		title.setText(mList[m]);
+		main.addView(title);
+		
 		var close=new TextView(Activity);
 		close.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,screen.x*(3/16),0));
 		close.setText(">>");
@@ -184,6 +197,7 @@ var Gui={
 				window.dismiss();
 			}
 		}));
+		sub.addView(close);
 		var mode=new TextView(Activity);
 		mode.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,0,0));
 		mode.setText("mode");
@@ -198,6 +212,7 @@ var Gui={
 				onItemClick:function(parent,view,position,id){
 					m=position;
 					Gui.Base.change(mList[m]);
+					dia.dismiss();
 				}
 				dia.setContentView(list);
 				dia.show();
@@ -205,6 +220,7 @@ var Gui={
 				
 			}
 		}));
+		sub.addView(mode);
 		
 		function show(){
 			window.showAtLocation(Activity.getWindow().getDecorView(),Gravity.RIGHT|Gravity.TOP,0,0);
@@ -217,16 +233,39 @@ var Gui={
 				v=null;
 			}else{
 				v=view;
+				title.setText(mList[m]);
 				layout.addView(view);
 			}
 		}
 		
+		var  edit_id=new EditText(Activity);
+		edit_id.setInputType(InputType.TYPE_CLASS_NUMBER);
+		edit_id.setText("0");
+		
+		var  edit_dam=new EditText(Activity);
+		edit_dam.setInputType(InputType.TYPE_CLASS_NUMBER);
+		edit_dam.setText("0");
+		
 		return {
 			window:window,
 			show:show,
-			change:change
+			change:change,
+			id:edit_id,
+			dam:edit_dam
 		};
-	}())
+	}()),
+	
+	All:function(){
+		var main=new LinearLayout(Activity);
+		main.setOrientation(1);
+		main.addView(Gui.Base.id);
+		main.addView(Gui.Base.dam);
+		return main;
+	},
+	Setting:function(){
+		var main=new LinearLayout(Activity);
+		return main;
+	}
 }
 
 function WeMessage(name,message){
