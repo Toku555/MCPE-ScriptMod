@@ -20,6 +20,13 @@ var display=new android.util.DisplayMetrics();
 Activity.getWindowManager().getDefaultDisplay().getMetrics(display);
 var screen={x:Math.max(display.widthPixels,display.heightPixels),y:Math.min(display.widthPixels,display.heightPixels)};
 
+var GuiColor={
+	top:"#000000",
+	background:"#66000000",
+	mode:"#F4A460",
+	text:"#FFFFFF"
+}
+
 var m=0;
 var mList=["All","Setting"];
 
@@ -176,17 +183,17 @@ var Gui=(function(){
 	
 	Base=(function(){
 		var window=new android.widget.PopupWindow(Math.floor(screen.x/4),Math.floor(screen.y));
-		window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.parseColor("#66000000")));
+		window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.parseColor(GuiColor.background)));
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		window.setContentView(main);
 		var sub=new AbsoluteLayout(Activity);
-		sub.setBackgroundColor(Color.BLACK);
+		sub.setBackgroundColor(Color.parseColor(GuiColor.top));
 		sub.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 		main.addView(sub);
 		
 		var title=new TextView(Activity);
-		title.setTextColor(Color.WHITE);
+		title.setTextColor(Color.parseColor(GuiColor.mode));
 		title.setTextSize(30);
 		title.setText(mList[m]);
 		main.addView(title);
@@ -194,7 +201,7 @@ var Gui=(function(){
 		var close=new TextView(Activity);
 		close.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,screen.x*(4/19),0));
 		close.setText(">>");
-		close.setTextColor(Color.WHITE);
+		close.setTextColor(Color.parseColor(GuiColor.text));
 		close.setOnClickListener(new OnClickListener({
 			onClick:function(v){
 				window.dismiss();
@@ -204,7 +211,7 @@ var Gui=(function(){
 		var mode=new TextView(Activity);
 		mode.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,0,0));
 		mode.setText("mode");
-		mode.setTextColor(Color.WHITE);
+		mode.setTextColor(Color.parseColor(GuiColor.text));
 		mode.setOnClickListener(new OnClickListener({
 			onClick:function(v){
 				var dia=new Dialog(Activity);
@@ -244,17 +251,25 @@ var Gui=(function(){
 			}
 		}
 		
+		WeText=function(text,size){
+			var textview=new TextView(Activity);
+			textview.setTextColor(Color.parseColor(GuiColor.text));
+			textview.setText(text);
+			textview.setTextSize(size);
+			return textview;
+		}
+		
 		var  edit_id=new EditText(Activity);
 		edit_id.setInputType(InputType.TYPE_CLASS_NUMBER);
 		edit_id.setText("0");
-		edit_id.setTextColor(Color.WHITE);
-		edit_id.setBackgroundColor(Color.parseColor("#00000000"));
+		edit_id.setTextColor(Color.parseColor(GuiColor.text));
+		//edit_id.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		var  edit_dam=new EditText(Activity);
 		edit_dam.setInputType(InputType.TYPE_CLASS_NUMBER);
 		edit_dam.setText("0");
-		edit_dam.setTextColor(Color.WHITE);
-		edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
+		edit_dam.setTextColor(Color.parseColor(GuiColor.text));
+		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		return {
 			window:window,
@@ -268,7 +283,9 @@ var Gui=(function(){
 	var All=(function(){
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
+		main.addView(WeText("ID",20));
 		main.addView(Base.id);
+		main.addView(WeText("Damage",20));
 		main.addView(Base.dam);
 		return main;
 	}());
@@ -289,7 +306,7 @@ var Gui=(function(){
 OnThread(function(){
 	var window=new android.widget.PopupWindow(Math.floor(screen.x/18),LayoutParams.WRAP_CONTENT);
 	var open=new TextView(Activity);
-	open.setBackgroundColor(Color.BLACK);
+	open.setBackgroundColor(Color.parseColor(GuiColor.top));
 	open.setTextColor(Color.WHITE);
 	open.setText("<<");
 	open.setGravity(Gravity.CENTER);
