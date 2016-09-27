@@ -350,20 +350,24 @@ var Gui=(function(){
 		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		var edit_target=new EditText(Activity);
-		edit_target.setInputType(InputType.TYPE_CLASS_NUMBER);
+		//edit_target.setInputType(InputType.TYPE_CLASS_NUMBER);
 		edit_target.setText("0");
 		edit_target.setTextColor(Color.parseColor(GuiColor.text));
 		edit_target.addTextChangedListener(new TextWatcher(){
 			afterTextChanged:function(s){
-				var target1=s.split(","),target2=[];
-				for(var i1=0;i1<target.length;i1++){
-					var target3=target1[i1].split(":");
-					target3[0]=Number(target3[0])==NaN ? 0:Number(target3[0]);
-					target3[1]=Number(target3[1])==NaN ? 0:Number(target3[1]);
-					target2.push(target3);
+				try{
+					var target1=String(s).split(","),target2=[];
+					for(var i1=0;i1<target1.length;i1++){
+						var target3=target1[i1].split(":");
+						target3[0]=Number(target3[0])==NaN ? 0:Number(target3[0]);
+						target3[1]=Number(target3[1])==NaN ? 0:Number(target3[1]);
+						target2.push(target3);
+					}
+					host.target=target2;
+					clientMessage(JSON.stringify(host.target));
+				}catch(e){
+					print(e);
 				}
-				host.target=target2;
-				clientMessage(JSON.stringify(host.target));
 			}
 		});
 		
@@ -401,7 +405,7 @@ var Gui=(function(){
 	
 	return {
 		Base:Base,
-		All:All,
+		Set:Set,
 		Setting:Setting
 	}
 }());
