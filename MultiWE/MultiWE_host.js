@@ -1,5 +1,6 @@
 var Activity=com.mojang.minecraftpe.MainActivity.currentMainActivity.get();
 var LinearLayout=android.widget.LinearLayout;
+var ScrollView=android.widget.ScrollView;
 var Dialog=android.app.Dialog;
 var TableLayout=android.widget.TableLayout;
 var TableRow=android.widget.TableRow;
@@ -30,11 +31,12 @@ var GuiColor={
 }
 
 var m=0;
-var mList=["All","Setting"];
+var mList=["Set","Setting"];
 
 var host={
 	id:0,
 	dam:0,
+	target:[],
 	pos:{s:{x:null,y:null,z:null},e:{x:null,y:null,z:null}}
 };
 
@@ -347,24 +349,47 @@ var Gui=(function(){
 		});
 		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
 		
+		var edit_target=new EditText(Activity);
+		edit_target.setInputType(InputType.TYPE_CLASS_NUMBER);
+		edit_target.setText("0");
+		edit_target.setTextColor(Color.parseColor(GuiColor.text));
+		edit_target.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				var target1=s.split(","),target2=[];
+				for(var i1=0;i1<target.length;i1++){
+					var target3=target1[i1].split(":");
+					target3[0]=Number(target3[0])==NaN ? 0:Number(target3[0]);
+					target3[1]=Number(target3[1])==NaN ? 0:Number(target3[1]);
+					target2.push(target3);
+				}
+				host.target=target2;
+				clientMessage(JSON.stringify(host.target));
+			}
+		});
+		
 		return {
 			window:window,
 			show:show,
 			change:change,
 			id:edit_id,
-			dam:edit_dam
+			dam:edit_dam,
+			target:edit_target
 		};
 	}());
 	
 	
-	var All=(function(){
+	var Set=(function(){
+		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		main.addView(WeText("ID",20));
 		main.addView(Base.id);
 		main.addView(WeText("Damage",20));
 		main.addView(Base.dam);
-		return main;
+		main.addView(WeText("Target",20));
+		main.addView(Base.target);
+		scroll.addView(main);
+		return scroll;
 	}());
 	
 	
