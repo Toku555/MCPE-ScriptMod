@@ -333,7 +333,7 @@ var Gui=(function(){
 		edit_id.setTextColor(Color.parseColor(GuiColor.text));
 		edit_id.addTextChangedListener(new TextWatcher(){
 			afterTextChanged:function(s){
-				host.id=Number(s)==NaN ? 0:Number(s);
+				host.id=Number(s)>=0 ? Number(s):0;
 			}
 		});
 		//edit_id.setBackgroundColor(Color.parseColor("#00000000"));
@@ -344,7 +344,7 @@ var Gui=(function(){
 		edit_dam.setTextColor(Color.parseColor(GuiColor.text));
 		edit_dam.addTextChangedListener(new TextWatcher(){
 			afterTextChanged:function(s){
-				host.dam=Number(s)==NaN ? 0:Number(s);
+				host.dam=Number(s)>=0 ? Number(s):0;
 			}
 		});
 		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
@@ -358,10 +358,12 @@ var Gui=(function(){
 				try{
 					var target1=String(s).split(","),target2=[];
 					for(var i1=0;i1<target1.length;i1++){
-						var target3=target1[i1].split(":");
-						target3[0]=Number(target3[0])==NaN ? 0:Number(target3[0]);
-						target3[1]=Number(target3[1])==NaN ? 0:Number(target3[1]);
-						target2.push(target3);
+						if(target1[i1]!=""){
+							var target3=target1[i1].split(":");
+							target3[0]=Number(target3[0])>=0 ? Number(target3[0]):0;
+							target3[1]=Number(target3[1])>=0 ? Number(target3[1]):0;
+							target2.push(target3);
+						}
 					}
 					host.target=target2;
 					clientMessage(JSON.stringify(host.target));
