@@ -15,6 +15,8 @@ var EditText=android.widget.EditText;
 var InputType=android.text.InputType;
 var Color=android.graphics.Color;
 var LayoutParams=android.view.ViewGroup.LayoutParams;
+var OnTouchListener=android.view.View.OnTouchListener;
+var TextWatcher=android.text.TextWatcher;
 
 var display=new android.util.DisplayMetrics();
 Activity.getWindowManager().getDefaultDisplay().getMetrics(display);
@@ -37,15 +39,65 @@ var host={
 };
 
 var process=[];
-var option={
+var Option={
 	processType:0,
 	speed:3
 };
 
+var ClipBoard={};
+
 var player=[];
 
+var SDcard=android.os.Environment.getExternalStorageDirectory();
+var MCPEdata=new java.io.File(SDcard.getAbsolutePath()+"/games/com.mojang/minecraftpe");
+var File={
+	Save:function(name,data){
+		var Folder=new java.io.File(MCPEdata+"/WorldEditor");
+		Folder.mkdirs();
+		var DataFile=new java.io.File(MCPEdata+"/WorldEditor/"+name+".json");
+		DataFile.createNewFile();
+		var DataWrite=new java.io.FileWriter(DataFile,false);
+		DataWrite.write(JSON.stringify(data,null,"\t"));
+		DataWrite.close();
+	},
+	Load:function(name){
+		try{
+			var DataFile=new java.io.FileReader(MCPEdata+"/WorldEditor/"+name+".json");
+			var Read=new java.io.BufferedReader(DataFile);
+			var str="";
+			var Data=Read.readLine();
+			while(Data!=null){
+				str+=Data;
+				Data=Read.readLine();
+			}
+			var rtn=JSON.parse(str);
+			Read.close();
+			return rtn;
+		}catch(e){
+			return null;
+		}
+	},
+	List:function(){
+		var Folder=new java.io.File(MCPEdata+"/WorldEditor");
+		Folder.mkdir();
+		var list=Folder.list();
+		for(var i in list){
+			list[i]=list[i].replace('.json',"");
+		}
+		return list;
+	}
+};
+
+var _GuiColor=File.Load("GuiColor");
+if(_GuiColor==null)File.Save("GuiColor",GuiColor);else GuiColor=_GuiColor;
+var _Option=File.Load("Option");
+if(_Option==null)File.Save("Option",Option);else Option=_Option;
+var _ClipBoard=File.Load("ClipBoard");
+if(_ClipBoard==null)File.Save("ClipBoard",ClipBoard);else ClipBoard=_ClipBoard;
+
+
 function modTick(){
-	for(var i=0;i<=option.speed;i++){
+	for(var i=0;i<=Option.speed;i++){
 		if(process.length>0){
 			if(process[0].set.length>process[0].i){
 				process[0].undo.push([process[0].set[0],process[0].set[1],process[0].set[2],getTile(process[0].set[0],process[0].set[1],process[0].set[2]),Level.getData(process[0].set[0],process[0].set[1],process[0].set[2])]);
@@ -134,7 +186,7 @@ var WeCommand={
 			}else{
 				var dam=0;
 				if(com[3]!=undefined)dam=Number(com[3]);
-				WE.All(name,Number(com[2]),dam,option.processType);
+				WE.All(name,Number(com[2]),dam,Option.processType);
 			}
 		}
 	}
@@ -184,6 +236,20 @@ var Gui=(function(){
 	Base=(function(){
 		var window=new android.widget.PopupWindow(Math.floor(screen.x/4),Math.floor(screen.y));
 		window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.parseColor(GuiColor.background)));
+		window.setFocusable(true);
+		//window.setOutsideTouchable(false);
+		/*window.setTouchInterceptor(new OnTouchListener(){
+			onTouch:function(v,event){
+				clientMessage(event.getAction());
+				switch(event.getAction()){
+					case 0:
+						return false;
+						break;
+				}
+				return false;
+			}
+		});*/
+		window.update();
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		window.setContentView(main);
@@ -263,12 +329,22 @@ var Gui=(function(){
 		edit_id.setInputType(InputType.TYPE_CLASS_NUMBER);
 		edit_id.setText("0");
 		edit_id.setTextColor(Color.parseColor(GuiColor.text));
+		edit_id.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				host.id=Number(s)==NaN ? 0:Number(s);
+			}
+		});
 		//edit_id.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		var  edit_dam=new EditText(Activity);
 		edit_dam.setInputType(InputType.TYPE_CLASS_NUMBER);
 		edit_dam.setText("0");
 		edit_dam.setTextColor(Color.parseColor(GuiColor.text));
+		edit_dam.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				host.dam=Number(s)==NaN ? 0:Number(s);
+			}
+		});
 		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		return {
@@ -280,6 +356,7 @@ var Gui=(function(){
 		};
 	}());
 	
+	
 	var All=(function(){
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
@@ -289,6 +366,7 @@ var Gui=(function(){
 		main.addView(Base.dam);
 		return main;
 	}());
+	
 	
 	var Setting=(function(){
 		var main=new LinearLayout(Activity);
@@ -307,14 +385,18 @@ OnThread(function(){
 	var window=new android.widget.PopupWindow(Math.floor(screen.x/18),LayoutParams.WRAP_CONTENT);
 	var open=new TextView(Activity);
 	open.setBackgroundColor(Color.parseColor(GuiColor.top));
-	open.setTextColor(Color.WHITE);
+	open.setTextColor(Color.parseColor(GuiColor.text));
 	open.setText("<<");
 	open.setGravity(Gravity.CENTER);
 	open.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 	open.setOnClickListener(new OnClickListener({
 		onClick:function(v){
+			try{
 			Gui.Base.change(Gui[mList[m]]);
 			Gui.Base.show();
+			}catch(e){
+				print(e);
+			}
 		}
 	}));
 	window.setContentView(open);
