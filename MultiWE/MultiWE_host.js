@@ -350,8 +350,6 @@ var Gui=(function(){
 		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
 		
 		var edit_target=new EditText(Activity);
-		//edit_target.setInputType(InputType.TYPE_CLASS_NUMBER);
-		edit_target.setText("0");
 		edit_target.setTextColor(Color.parseColor(GuiColor.text));
 		edit_target.addTextChangedListener(new TextWatcher(){
 			afterTextChanged:function(s){
@@ -399,15 +397,29 @@ var Gui=(function(){
 	}());
 	
 	
-	var Setting=(function(){
+	var Paste=(function(){
+		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
-		return main;
+		main.addView(WeText("Target",20));
+		main.addView(Base.target);
+		scroll.addView(Activity);
+		return scroll;
+	}());
+	
+	
+	var Setting=(function(){
+		var scroll=new ScrollView(Activity);
+		var main=new LinearLayout(Activity);
+		main.setOrientation(1);
+		scroll.addView(Activity);
+		return scroll;
 	}());
 	
 	return {
 		Base:Base,
 		Set:Set,
+		Paste:Paste,
 		Setting:Setting
 	}
 }());
