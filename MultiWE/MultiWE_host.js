@@ -451,6 +451,11 @@ function WeMessage(name,message){
 	clientMessage("\n[WorldEditor]\n>>"+name+"\n"+message);
 }
 
+function getBlock(){
+	var total=0;
+	for(var i1=0;i1<host.block.lemgth;i1++)
+}
+
 function CheckCommand(a,com){
 	for(var i=0;i<a.length;i++){
 		switch(a[i]){
