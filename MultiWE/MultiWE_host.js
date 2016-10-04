@@ -18,6 +18,9 @@ var Color=android.graphics.Color;
 var LayoutParams=android.view.ViewGroup.LayoutParams;
 var OnTouchListener=android.view.View.OnTouchListener;
 var TextWatcher=android.text.TextWatcher;
+var Switch=android.widget.Switch;
+var CompoundButton=android.widget.CompoundButton;
+var CheckBox=android.widget.CheckBox;
 
 var display=new android.util.DisplayMetrics();
 Activity.getWindowManager().getDefaultDisplay().getMetrics(display);
@@ -27,39 +30,59 @@ var GuiColor={
 	top:"#000000",
 	background:"#66000000",
 	mode:"#F4A460",
-	text:"#FFFFFF"
+	text:"#FFFFFF",
+	button1:"#22000000",
+	button2:"#22FFFFFF",
 }
 
 var m=0;
-var mList=["Set","Setting"];
+var mList=["Set","Circle","Sphere","Copy","Paste","Setting"];
 
-var host={
-	id:0,
-	dam:0,
-	target:[],
-	pos:{s:{x:null,y:null,z:null},e:{x:null,y:null,z:null}}
+var Option={
+	pile:1,
 };
 
 var process=[];
-var Option={
-	processType:0,
-	speed:3
-};
-
-var ClipBoard={};
 
 var player=[];
+
+function PlayerObj(){
+	this.auth=false;
+	this.log=[];
+	this.undo=[];
+	this.redo=[];
+	this.pile=1;
+	this.r=0;
+	this.fill=true;
+	this.block=[];
+	this.target=[];
+	this.pos={s:{x:0,y:0,z:0},e:{x:0,y:0,z:0}};
+	this.clipboard={};
+}
+
+var host={
+	log:[],
+	undo:[],
+	redo:[],
+	pile:Option.pile,
+	r:0,
+	fill:true,
+	block:[],
+	target:[],
+	pos:{s:{x:0,y:0,z:0},e:{x:0,y:0,z:0}},
+	clipboard:{}
+};
 
 var SDcard=android.os.Environment.getExternalStorageDirectory();
 var MCPEdata=new java.io.File(SDcard.getAbsolutePath()+"/games/com.mojang/minecraftpe");
 var File={
-	Save:function(name,data){
+	Save:function(name,data,indent){
 		var Folder=new java.io.File(MCPEdata+"/WorldEditor");
 		Folder.mkdirs();
 		var DataFile=new java.io.File(MCPEdata+"/WorldEditor/"+name+".json");
 		DataFile.createNewFile();
 		var DataWrite=new java.io.FileWriter(DataFile,false);
-		DataWrite.write(JSON.stringify(data,null,"\t"));
+		if(indent)DataWrite.write(JSON.stringify(data,null,"\t"));else DataWrite.write(JSON.stringify(data));
 		DataWrite.close();
 	},
 	Load:function(name){
@@ -91,72 +114,108 @@ var File={
 };
 
 var _GuiColor=File.Load("GuiColor");
-if(_GuiColor==null)File.Save("GuiColor",GuiColor);else GuiColor=_GuiColor;
+if(_GuiColor==null)File.Save("GuiColor",GuiColor,true);else GuiColor=_GuiColor;
 var _Option=File.Load("Option");
-if(_Option==null)File.Save("Option",Option);else Option=_Option;
+if(_Option==null)File.Save("Option",Option,true);else Option=_Option;
 var _ClipBoard=File.Load("ClipBoard");
-if(_ClipBoard==null)File.Save("ClipBoard",ClipBoard);else ClipBoard=_ClipBoard;
+if(_ClipBoard==null)File.Save("ClipBoard",host.clipboard);else host.clipboard=_ClipBoard;
 
+
+function newLevel(){
+	host.name=Player.getName(getPlayerEnt());
+}
 
 function modTick(){
-	for(var i=0;i<=Option.speed;i++){
-		if(process.length>0){
-			if(process[0].set.length>process[0].i){
-				process[0].undo.push([process[0].set[0],process[0].set[1],process[0].set[2],getTile(process[0].set[0],process[0].set[1],process[0].set[2]),Level.getData(process[0].set[0],process[0].set[1],process[0].set[2])]);
-				setTile(process[0].set[0],process[0].set[1],process[0].set[2],process[0].set[3],process[0].set[4]);
-				process[0].i++;
-			}else{
-				player[process[0].name].Undo.push();
-				process.shift();
-			}
-		}
+	if(process.length>0){
+		eval(process[0][0]);
+		if(process[0][1]!=undefined)clientMessage(process[0][1]);
+		process.shift();
 	}
 }
 
 function useItem(x,y,z,iid,bid,side,idam,bdam){
+	//ダイヤでタップした時モードによって処理分岐
+	if(iid==264){
+		if(host.name==Player.getName(getPlayerEnt())){
+			switch(mList[m]){
+				case "Circle":
+					WE.Circle(host,side,x,y,z);
+					break;
+				case "Sphere":
+					WE.Sphere(host,x,y,z);
+					break;
+			}
+		}
+	}
+	
 	if(iid==280){
-		var cn=Player.getItemCustomName(0);
-		if(cn!=null){
-			var com=cn.split(" ");
-			if(com[0]=="we"){
-				var pname=Player.getName(getPlayerEnt());
-				if(player[pname]==undefined){
-					player[pname]=new PlayerObj();
-				}
-				if(player[pname].Auth){
-					if(WeCommand[com[1]]!=undefined){
-						if(CheckCommand(WeCommand[com[1]].arg,com)){
-							WeCommand[com[1]].fnc(pname,com,x,y,z);
+		if(idam==0){
+			var pname=Player.getName(getPlayerEnt());
+			if(pname==host.name)clientMessage("Id:"+bid+",Dam:"+bdam);
+		}
+		//参加者側からのコマンド送信
+		if(idam==1){
+			var cn=Player.getItemCustomName(0);
+			if(cn!=null){
+				var com=cn.split(" ");
+				if(com[0]=="we"){
+					var pname=Player.getName(getPlayerEnt());
+					if(player[pname]==undefined){
+						player[pname]=new PlayerObj();
+					}
+					if(player[pname].auth){
+						if(WeCommand[com[1]]!=undefined){
+							if(CheckCommand(WeCommand[com[1]].arg,com)){
+								WeCommand[com[1]].fnc(pname,com,x,y,z);
+							}
+						}else{
+							WeMessage(pname,"コマンドの引数が正しくありません");
 						}
 					}else{
-						WeMessage(pname,"コマンドの引数が正しくありません");
+						WeMessage(pname,"WEを使用する権限がありません");
 					}
-				}else{
-					WeMessage(pname,"WEを使用する権限がありません");
 				}
 			}
 		}
 	}
-}
-
-function onThread(func){
-	Activity.runOnUiThread(new java.lang.Runnable({
-		run:function(){
-			func();
+	
+	//ブロック積み上げ
+	if(iid==281){
+		var pname=Player.getName(getPlayerEnt());
+		var pile=(pname==host.name ? host.pile:player[pname].pile);
+		var undo=[];
+		var i=1;
+		while(i<=pile){
+			switch(side){
+				case 0:
+					undo.push([x,y-i,z,getTile(x,y-i,z),Level.getData(x,y-i,z)]);
+					setTile(x,y-i,z,bid,bdam);
+					break;
+				case 1:
+					undo.push([x,y+i,z,getTile(x,y+i,z),Level.getData(x,y+i,z)]);
+					setTile(x,y+i,z,bid,bdam);
+					break;
+				case 2:
+					undo.push([x,y,z-i,getTile(x,y,z-i),Level.getData(x,y,z-i)]);
+					setTile(x,y,z-i,bid,bdam);
+					break;
+				case 3:
+					undo.push([x,y,z+i,getTile(x,y,z+i),Level.getData(x,y,z+i)]);
+					setTile(x,y,z+i,bid,bdam);
+					break;
+				case 4:
+					undo.push([x-i,y,z,getTile(x-i,y,z),Level.getData(x-i,y,z)]);
+					setTile(x-i,y,z,bid,bdam);
+					break;
+				case 5:
+					undo.push([x+i,y,z,getTile(x+i,y,z),Level.getData(x+i,y,z)]);
+					setTile(x+i,y,z,bid,bdam);
+					break;
+			}
+			i++;
 		}
-	}));
-}
-
-function PlayerObj(){
-	this.Auth=false;
-	this.Log=[];
-	this.Undo=[];
-	this.Redo=[];
-	this.PileUp=1;
-	this.Pos={
-		s:{x:null,y:null,z:null},
-		e:{x:null,y:null,z:null}
-	};
+		if(pname==host.name)host.undo.unshift(undo);else player[pname].undo.unshift(undo);
+	}
 }
 
 var WeCommand={
@@ -194,64 +253,314 @@ var WeCommand={
 	}
 };
 
+//WEの機能
 var WE={
-	Circle:function(name,r,id,dam,x,y,z){
-
-	},
-	All:function(name,id,dam,type){
-		var max={x:Math.max(player[name].Pos.s.x,player[name].Pos.e.x),y:Math.max(player[name].Pos.s.y,player[name].Pos.e.y),z:Math.max(player[name].Pos.s.z,player[name].Pos.e.z)};
-		var min={x:Math.min(player[name].Pos.s.x,player[name].Pos.e.x),y:Math.min(player[name].Pos.s.y,player[name].Pos.e.y),z:Math.min(player[name].Pos.s.z,player[name].Pos.e.z)};
+	Circle:function(obj,side,x,y,z){
 		var undo=[];
-		player[name].Log.push("All:"+String(max.x-min.x)+"*"+String(max.y-min.y)+"*"+String(max.z-min.z));
-		if(type==0){
-			for(var i1=min.x;i1<=max.x;i1++){
-				for(var i2=min.y;i2<=max.y;i2++){
-					for(var i3=min.z;i3<=max.z;i3++){
-						undo.push([i1,i2,i3,getTile(i1,i2,i3),Level.getData(i1,i2,i3)]);
-						setTile(i1,i2,i3,id,dam);
+		var tar=target(obj.target);
+		obj.log.push("Circle:"+String(x)+"*"+String(y)+"*"+String(z));
+		if(obj.fill){
+			for(var i1=-1*obj.r;i1<=obj.r;i1++){
+				var cr1=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1)));
+				for(var i2=-1*cr1;i2<=cr1;i2++){
+					var block=getBlock(obj);
+					switch(side){
+						case 0:
+						case 1:
+							var id=getTile(x+i1,y,z+i2),dam=Level.getData(x+i1,y,z+i2);
+							if(tar==null){
+								undo.push([x+i1,y,z+i2,id,dam]);
+								setTile(x+i1,y,z+i2,block[0],block[1]);
+							}else if(tar[id][dam]){
+								undo.push([x+i1,y,z+i2,id,dam]);
+								setTile(x+i1,y,z+i2,block[0],block[1]);
+							}
+							break;
+						case 2:
+						case 3:
+							var id=getTile(x+i1,y+i2,z),dam=Level.getData(x+i1,y+i2,z);
+							if(tar==null){
+								undo.push([x+i1,y+i2,z,id,dam]);
+								setTile(x+i1,y+i2,z,block[0],block[1]);
+							}else if(tar[id][dam]){
+								undo.push([x+i1,y+i2,z,id,dam]);
+								setTile(x+i1,y+i2,z,block[0],block[1]);
+							}
+							break;
+						case 4:
+						case 5:
+							var id=getTile(x,y+i1,z+i2),dam=Level.getData(x,y+i1,z+i2);
+							if(tar==null){
+								undo.push([x,y+i1,z+i2,id,dam]);
+								setTile(x,y+i1,z+i2,block[0],block[1]);
+							}else if(tar[id][dam]){
+								undo.push([x,y+i1,z+i2,id,dam]);
+								setTile(x,y+i1,z+i2,block[0],block[1]);
+							}
+							break;
 					}
 				}
 			}
-			player[name].Undo.unshift(undo);
-		}else if(tyoe==1){
-			var set=[];
-			for(var i1=min.x;i1<=max.x;i1++){
-				for(var i2=min.y;i2<=max.y;i2++){
-					for(var i3=min.z;i3<=max.z;i3++){
-						set.push([i1,i2,i3,getTile(i1,i2,i3),Level.getData(i1,i2,i3)]);
-					}
+		}else{
+			for(var i1=-1*obj.r;i1<=obj.r;i1++){
+				var cr=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1)));
+				var id,dam,block=getBlock(obj);
+				switch(side){
+					case 0:
+					case 1:
+						id=getTile(x+i1,y,z+cr),dam=Level.getData(x+i1,y,z+cr);
+						undo.push([x+i1,y,z+cr,id,dam]);
+						setTile(x+i1,y,z+cr,block[0],block[1]);
+						
+						id=getTile(x+i1,y,z-cr),dam=Level.getData(x+i1,y,z-cr);
+						undo.push([x+i1,y,z-cr,id,dam]);
+						setTile(x+i1,y,z-cr,block[0],block[1]);
+						
+						id=getTile(x+cr,y,z+i1),dam=Level.getData(x+cr,y,z+i1);
+						undo.push([x+cr,y,z+i1,id,dam]);
+						setTile(x+cr,y,z+i1,block[0],block[1]);
+						
+						id=getTile(x-cr,y,z+i1),dam=Level.getData(x-cr,y,z+i1);
+						undo.push([x-cr,y,z+i1,id,dam]);
+						setTile(x-cr,y,z+i1,block[0],block[1]);
+						
+						break;
+					case 2:
+					case 3:
+						id=getTile(x+i1,y+cr,z),dam=Level.getData(x+i1,y+cr,z);
+						undo.push([x+i1,y+cr,z,id,dam]);
+						setTile(x+i1,y+cr,z,block[0],block[1]);
+						
+						id=getTile(x+i1,y-cr,z),dam=Level.getData(x+i1,y-cr,z);
+						undo.push([x+i1,y-cr,z,id,dam]);
+						setTile(x+i1,y-cr,z,block[0],block[1]);
+						
+						id=getTile(x+cr,y+i1,z),dam=Level.getData(x+cr,y+i1,z);
+						undo.push([x+cr,y+i1,z,id,dam]);
+						setTile(x+cr,y+i1,z,block[0],block[1]);
+						
+						id=getTile(x-cr,y+i1,z),dam=Level.getData(x-cr,y+i1,z);
+						undo.push([x-cr,y+i1,z,id,dam]);
+						setTile(x-cr,y+i1,z,block[0],block[1]);
+						break;
+					case 4:
+					case 5:
+						id=getTile(x,y+i1,z+cr),dam=Level.getData(x,y+i1,z+cr);
+						undo.push([x,y+i1,z+cr,id,dam]);
+						setTile(x,y+i1,z+cr,block[0],block[1]);
+						
+						id=getTile(x,y+i1,z-cr),dam=Level.getData(x,y+i1,z-cr);
+						undo.push([x,y+i1,z-cr,id,dam]);
+						setTile(x,y+i1,z-cr,block[0],block[1]);
+						
+						id=getTile(x,y+cr,z+i1),dam=Level.getData(x,y+cr,z+i1);
+						undo.push([x,y+cr,z+i1,id,dam]);
+						setTile(x,y+cr,z+i1,block[0],block[1]);
+						
+						id=getTile(x,y-cr,z+i1),dam=Level.getData(x,y-cr,z+i1);
+						undo.push([x,y-cr,z+i1,id,dam]);
+						setTile(x,y-cr,z+i1,block[0],block[1]);
+						break;
 				}
 			}
-			process.push({
-				player:name,
-				name:"All",
-				undo:[],
-				i:0,
-				set:set
-			});
 		}
+		obj.undo.unshift(undo);
+		obj.redo=[];
+	},
+	Sphere:function(obj,x,y,z){
+		var undo=[];
+		var tar=target(obj.target);
+		obj.log.push("Sphere:"+String(x)+"*"+String(y)+"*"+String(z));
+		if(obj.fill){
+			for(var i1=-1*obj.r;i1<=obj.r;i1++){
+				var sy=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1)));
+				for(var i2=-1*sy;i2<=sy;i2++){
+					var sz=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1-i2*i2)));
+					for(var i3=-1*sz;i3<=sz;i3++){
+						var id=getTile(x+i1,y+i2,z+i3),dam=Level.getData(x+i1,y+i2,z+i3);
+						if(tar==null){
+							var block=getBlock(obj);
+							if(block!=null){
+								undo.push([x+i1,y+i2,z+i3,id,dam]);
+								setTile(x+i1,y+i2,z+i3,block[0],block[1]);
+							}
+						}else if(tar[id][dam]){
+							var block=getBlock(obj);
+							if(block!=null){
+								undo.push([x+i1,y+i2,z+i3,id,dam]);
+								setTile(x+i1,y+i2,z+i3,block[0],block[1]);
+							}
+						}
+					}
+				}
+			}
+		}else{
+			for(var i1=-1*obj.r;i1<=obj.r;i1++){
+				var sy=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1)));
+				for(var i2=-1*sy;i2<=sy;i2++){
+					var sr=Math.floor(Math.sqrt(Math.abs(obj.r*obj.r-i1*i1-i2*i2)));
+					var id,dam,block;
+					
+					id=getTile(x+i1,y+i2,z+sr);dam=Level.getData(x+i1,y+i2,z+sr),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x+i1,y+i2,z+sr,id,dam]);
+						setTile(x+i1,y+i2,z+sr,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x+i1,y+i2,z+sr,id,dam]);
+						setTile(x+i1,y+i2,z+sr,block[0],block[1]);
+					}
+					id=getTile(x+i1,y+i2,z-sr);dam=Level.getData(x+i1,y+i2,z-sr),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x+i1,y+i2,z-sr,id,dam]);
+						setTile(x+i1,y+i2,z-sr,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x+i1,y+i2,z-sr,id,dam]);
+						setTile(x+i1,y+i2,z-sr,block[0],block[1]);
+					}
+					id=getTile(x+i1,y+sr,z+i2);dam=Level.getData(x+i1,y+sr,z+i2),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x+i1,y+sr,z+i2,id,dam]);
+						setTile(x+i1,y+sr,z+i2,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x+i1,y+sr,z+i2,id,dam]);
+						setTile(x+i1,y+sr,z+i2,block[0],block[1]);
+					}
+					id=getTile(x+i1,y-sr,z+i2);dam=Level.getData(x+i1,y-sr,z+i2),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x+i1,y-sr,z+i2,id,dam]);
+						setTile(x+i1,y-sr,z+i2,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x+i1,y-sr,z+i2,id,dam]);
+						setTile(x+i1,y-sr,z+i2,block[0],block[1]);
+					}
+					id=getTile(x+sr,y+i2,z+i1);dam=Level.getData(x+sr,y+i2,z+i1),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x+sr,y+i2,z+i1,id,dam]);
+						setTile(x+sr,y+i2,z+i1,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x+sr,y+i2,z+i1,id,dam]);
+						setTile(x+sr,y+i2,z+i1,block[0],block[1]);
+					}
+					id=getTile(x-sr,y+i2,z+i1);dam=Level.getData(x-sr,y+i2,z+i1),block=getBlock(obj);
+					if(tar==null){
+						undo.push([x-sr,y+i2,z+i1,id,dam]);
+						setTile(x-sr,y+i2,z+i1,block[0],block[1]);
+					}else if(tar[id][dam]){
+						undo.push([x-sr,y+i2,z+i1,id,dam]);
+						setTile(x-sr,y+i2,z+i1,block[0],block[1]);
+					}
+				}
+			}
+		}
+		obj.undo.unshift(undo);
+		obj.redo=[];
+	},
+	Set:function(obj){
+		var max={x:Math.max(obj.pos.s.x,obj.pos.e.x),y:Math.max(obj.pos.s.y,obj.pos.e.y),z:Math.max(obj.pos.s.z,obj.pos.e.z)};
+		var min={x:Math.min(obj.pos.s.x,obj.pos.e.x),y:Math.min(obj.pos.s.y,obj.pos.e.y),z:Math.min(obj.pos.s.z,obj.pos.e.z)};
+		var undo=[];
+		var tar=target(obj.target);
+		obj.log.push("Set:"+String(max.x-min.x)+"*"+String(max.y-min.y)+"*"+String(max.z-min.z));
+		for(var i1=min.x;i1<=max.x;i1++){
+			for(var i2=min.y;i2<=max.y;i2++){
+				for(var i3=min.z;i3<=max.z;i3++){
+					var id=getTile(i1,i2,i3),dam=Level.getData(i1,i2,i3);
+					if(tar==null){
+						var block=getBlock(obj);
+						if(block!=null){
+							undo.push([i1,i2,i3,id,dam]);
+							setTile(i1,i2,i3,block[0],block[1]);
+						}
+					}else if(tar[id][dam]){
+						var block=getBlock(obj);
+						if(block!=null){
+							undo.push([i1,i2,i3,id,dam]);
+							setTile(i1,i2,i3,block[0],block[1]);
+						}
+					}
+				}
+			}
+		}
+		obj.undo.unshift(undo);
+		obj.redo=[];
+	},
+	Undo:function(obj){
+		var redo=[];
+		if(obj.undo.length>0){
+			for(var i=0;i<obj.undo[0].length;i++){
+				redo.push([obj.undo[0][i][0],obj.undo[0][i][1],obj.undo[0][i][2],getTile(obj.undo[0][i][0],obj.undo[0][i][1],obj.undo[0][i][2]),Level.getData(obj.undo[0][i][0],obj.undo[0][i][1],obj.undo[0][i][2])]);
+				setTile(obj.undo[0][i][0],obj.undo[0][i][1],obj.undo[0][i][2],obj.undo[0][i][3],obj.undo[0][i][4]);
+			}
+			obj.undo.shift();
+			obj.redo.unshift(redo);
+		}
+	},
+	Redo:function(obj){
+		var undo=[];
+		if(obj.redo.length>0){
+			for(var i=0;i<obj.redo[0].length;i++){
+				undo.push([obj.redo[0][i][0],obj.redo[0][i][1],obj.redo[0][i][2],getTile(obj.redo[0][i][0],obj.redo[0][i][1],obj.redo[0][i][2]),Level.getData(obj.redo[0][i][0],obj.redo[0][i][1],obj.redo[0][i][2])]);
+				setTile(obj.redo[0][i][0],obj.redo[0][i][1],obj.redo[0][i][2],obj.redo[0][i][3],obj.redo[0][i][4]);
+			}
+			obj.redo.shift();
+			obj.undo.unshift(undo);
+		}
+	},
+	Copy:function(obj,name){
+		var max={x:Math.max(obj.pos.s.x,obj.pos.e.x),y:Math.max(obj.pos.s.y,obj.pos.e.y),z:Math.max(obj.pos.s.z,obj.pos.e.z)};
+		var min={x:Math.min(obj.pos.s.x,obj.pos.e.x),y:Math.min(obj.pos.s.y,obj.pos.e.y),z:Math.min(obj.pos.s.z,obj.pos.e.z)};
+		var tar=target(obj.target);
+		var copy=[];
+		for(var i1=min.x;i1<=max.x;i1++){
+			for(var i2=min.y;i2<=max.y;i2++){
+				for(var i3=min.z;i3<=max.z;i3++){
+					var id=getTile(min.x+i1,min.y+i2,min.z+i3),dam=Level.getData(min.x+i1,min.y+i2,min.z+i3);
+					if(tar==null){
+						copy.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+					}else if(tar[id][dam]){
+						copy.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+					}
+				}
+			}
+		}
+	},
+	Cut:function(obj,name){
+		var max={x:Math.max(obj.pos.s.x,obj.pos.e.x),y:Math.max(obj.pos.s.y,obj.pos.e.y),z:Math.max(obj.pos.s.z,obj.pos.e.z)};
+		var min={x:Math.min(obj.pos.s.x,obj.pos.e.x),y:Math.min(obj.pos.s.y,obj.pos.e.y),z:Math.min(obj.pos.s.z,obj.pos.e.z)};
+		var tar=target(obj.target);
+		var cut=[];
+		var undo=[];
+		for(var i1=min.x;i1<=max.x;i1++){
+			for(var i2=min.y;i2<=max.y;i2++){
+				for(var i3=min.z;i3<=max.z;i3++){
+					var id=getTile(min.x+i1,min.y+i2,min.z+i3),dam=Level.getData(min.x+i1,min.y+i2,min.z+i3);
+					if(tar==null){
+						cut.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+						undo.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+						setTile(min.x+i1,min.y+i2,min.z+i3,0,0);
+					}else if(tar[id][dam]){
+						cut.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+						undo.push([min.x+i1,min.y+i2,min.z+i3,id,dam]);
+						setTile(min.x+i1,min.y+i2,min.z+i3,0,0);
+					}
+				}
+			}
+		}
+		
+		obj.undo.unshift(undo);
+		obj.redo=[];
 	}
 };
 
-var Gui=(function(){
-	
-	Base=(function(){
+//Gui関連
+var Gui={
+	Base:(function(){
+		//メインのwindow
 		var window=new android.widget.PopupWindow(Math.floor(screen.x/4),Math.floor(screen.y));
 		window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.parseColor(GuiColor.background)));
 		window.setFocusable(true);
-		//window.setOutsideTouchable(false);
-		/*window.setTouchInterceptor(new OnTouchListener(){
-			onTouch:function(v,event){
-				clientMessage(event.getAction());
-				switch(event.getAction()){
-					case 0:
-						return false;
-						break;
-				}
-				return false;
-			}
-		});*/
-		window.update();
+		
+		//windowにcontentViewするレイアウト
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		window.setContentView(main);
@@ -260,12 +569,14 @@ var Gui=(function(){
 		sub.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 		main.addView(sub);
 		
+		//上のレイアウトにaddViewされるモード表示のテキスト
 		var title=new TextView(Activity);
 		title.setTextColor(Color.parseColor(GuiColor.mode));
 		title.setTextSize(30);
 		title.setText(mList[m]);
 		main.addView(title);
 		
+		//windowを閉じるボタン
 		var close=new TextView(Activity);
 		close.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,screen.x*(4/19),0));
 		close.setText(">>");
@@ -276,6 +587,8 @@ var Gui=(function(){
 			}
 		}));
 		sub.addView(close);
+		
+		//モード選択のリストを出すためのボタン
 		var mode=new TextView(Activity);
 		mode.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,0,0));
 		mode.setText("mode");
@@ -290,7 +603,7 @@ var Gui=(function(){
 					onItemClick:function(parent,view,position,id){
 						try{
 							m=position;
-							Gui.Base.change(Gui[mList[m]]);
+							Gui.Base.change(Gui[mList[m]]());
 							dia.dismiss();
 						}catch(e){
 							print(e);
@@ -303,10 +616,12 @@ var Gui=(function(){
 		}));
 		sub.addView(mode);
 		
+		//windowの表示
 		function show(){
 			window.showAtLocation(Activity.getWindow().getDecorView(),Gravity.RIGHT|Gravity.TOP,0,0);
 		}
 		
+		//mainのレイアウトを変更
 		var v=null;
 		function change(view){
 			if(v!=null)main.removeView(v);
@@ -319,110 +634,322 @@ var Gui=(function(){
 			}
 		}
 		
-		WeText=function(text,size){
-			var textview=new TextView(Activity);
-			textview.setTextColor(Color.parseColor(GuiColor.text));
-			textview.setText(text);
-			textview.setTextSize(size);
-			return textview;
+		//ブロックのid,ダメージ値,比率入力のeditTextを生成
+		function block(){
+			var  edit_block=new EditText(Activity);
+			var s="";
+			for(var i1=0;i1<host.block.length;i1++){
+				if(s!="")s+=",";
+				s+=String(host.block[i1][0])+" "+String(host.block[i1][1])+" "+String(host.block[i1][2]);
+			}
+			edit_block.setText(s);
+			edit_block.setTextColor(Color.parseColor(GuiColor.text));
+			edit_block.addTextChangedListener(new TextWatcher(){
+				afterTextChanged:function(s){
+					var block1=String(s).split(","),block2=[];
+					for(var i1=0;i1<block1.length;i1++){
+						if(block1[i1]!=""){
+							var block3=block1[i1].split(" ");
+							block3[0]=Number(block3[0])>=0 ? Number(block3[0]):0;
+							block3[1]=Number(block3[1])>=0 ? Number(block3[1]):0;
+							block3[2]=Number(block3[2])>=0 ? Number(block3[2]):0;
+							block2.push(block3);
+						}
+					}
+					host.block=block2;
+				}
+			});
+			return edit_block;
 		}
 		
-		var  edit_id=new EditText(Activity);
-		edit_id.setInputType(InputType.TYPE_CLASS_NUMBER);
-		edit_id.setText("0");
-		edit_id.setTextColor(Color.parseColor(GuiColor.text));
-		edit_id.addTextChangedListener(new TextWatcher(){
-			afterTextChanged:function(s){
-				host.id=Number(s)>=0 ? Number(s):0;
+		//設置の対象となるブロックを入力するeditTextを生成
+		function target(){
+			var edit_target=new EditText(Activity);
+			var s="";
+			for(var i1=0;i1<host.target.length;i1++){
+				if(s!="")s+=",";
+				s+=String(host.target[i1][0])+" "+String(host.target[i1][1]);
 			}
-		});
-		//edit_id.setBackgroundColor(Color.parseColor("#00000000"));
-		
-		var  edit_dam=new EditText(Activity);
-		edit_dam.setInputType(InputType.TYPE_CLASS_NUMBER);
-		edit_dam.setText("0");
-		edit_dam.setTextColor(Color.parseColor(GuiColor.text));
-		edit_dam.addTextChangedListener(new TextWatcher(){
-			afterTextChanged:function(s){
-				host.dam=Number(s)>=0 ? Number(s):0;
-			}
-		});
-		//edit_dam.setBackgroundColor(Color.parseColor("#00000000"));
-		
-		var edit_target=new EditText(Activity);
-		edit_target.setTextColor(Color.parseColor(GuiColor.text));
-		edit_target.addTextChangedListener(new TextWatcher(){
-			afterTextChanged:function(s){
-				try{
+			edit_target.setText(s);
+			edit_target.setTextColor(Color.parseColor(GuiColor.text));
+			edit_target.addTextChangedListener(new TextWatcher(){
+				afterTextChanged:function(s){
 					var target1=String(s).split(","),target2=[];
 					for(var i1=0;i1<target1.length;i1++){
 						if(target1[i1]!=""){
-							var target3=target1[i1].split(":");
+							var target3=target1[i1].split(" ");
 							target3[0]=Number(target3[0])>=0 ? Number(target3[0]):0;
 							target3[1]=Number(target3[1])>=0 ? Number(target3[1]):0;
 							target2.push(target3);
 						}
 					}
 					host.target=target2;
-					clientMessage(JSON.stringify(host.target));
-				}catch(e){
-					print(e);
 				}
-			}
-		});
+			});
+			return edit_target;
+		}
+		
+		//pos1,pos2を設定するためのボタンのあるレイアウト
+		function pos(){
+			var layout=new LinearLayout(Activity);
+			layout.setOrientation(0);
+			layout.setGravity(Gravity.CENTER);
+			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+			var pos1=new Button(Activity);
+			pos1.setText("Pos1");
+			pos1.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+			pos1.setTextColor(Color.parseColor(GuiColor.text));
+			pos1.setBackgroundColor(Color.parseColor(GuiColor.button1));
+			pos1.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					host.pos.s={x:Math.floor(getPlayerX()),y:Math.floor(getPlayerY())-2,z:Math.floor(getPlayerZ())};
+					print("Set pos1");
+				}
+			});
+			var pos2=new Button(Activity);
+			pos2.setText("Pos2");
+			pos2.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+			pos2.setTextColor(Color.parseColor(GuiColor.text));
+			pos2.setBackgroundColor(Color.parseColor(GuiColor.button1));
+			pos2.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					host.pos.e={x:Math.floor(getPlayerX()),y:Math.floor(getPlayerY())-2,z:Math.floor(getPlayerZ())};
+					print("Set pos2");
+				}
+			});
+			layout.addView(pos1);
+			layout.addView(pos2);
+			return layout;
+		}
+		
+		//runボタンを生成
+		function run(fnc){
+			var btn=new Button(Activity);
+			btn.setText("Run");
+			btn.setTextColor(Color.parseColor(GuiColor.text));
+			btn.setBackgroundColor(Color.parseColor(GuiColor.button2));
+			btn.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					fnc();
+				}
+			});
+			return btn;
+		}
+		
+		//undo,redoのボタンを生成
+		function unredo(fnc){
+			var layout=new LinearLayout(Activity);
+			layout.setOrientation(0);
+			layout.setGravity(Gravity.CENTER);
+			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+			var undo=new Button(Activity);
+			undo.setText("Undo");
+			undo.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+			undo.setTextColor(Color.parseColor(GuiColor.text));
+			undo.setBackgroundColor(Color.parseColor(GuiColor.button1));
+			undo.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					process.push(['WE.Undo(host)']);
+				}
+			});
+			var redo=new Button(Activity);
+			redo.setText("Redo");
+			redo.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+			redo.setTextColor(Color.parseColor(GuiColor.text));
+			redo.setBackgroundColor(Color.parseColor(GuiColor.button1));
+			redo.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					process.push(['WE.Redo(host)']);
+				}
+			});
+			layout.addView(undo);
+			layout.addView(redo);
+			return layout;
+		}
+		
+		//チェックボタンのレイアウトを生成
+		function check(str,checked,fnc){
+			var layout=new LinearLayout(Activity);
+			layout.setOrientation(0);
+			layout.setGravity(Gravity.CENTER);
+			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+			var text=WeText(str,15);
+			text.setLayoutParams(new LayoutParams(screen.x*(12/16),LayoutParams.WRAP_CONTENT));
+			var checkbox=CheckBox(Activity);
+			checkbox.setChecked(checked);
+			checkbox.setLayoutParams(new LayoutParams(screen.x*(1/4),LayoutParams.WRAP_CONTENT));
+			checkbox.setOnClickListener(new OnClickListener(){
+				onClick:function(v){
+					fnc(v.isChecked());
+				}
+			});
+			layout.addView(text);
+			layout.addView(checkbox);
+			return layout;
+		}
 		
 		return {
 			window:window,
 			show:show,
 			change:change,
-			id:edit_id,
-			dam:edit_dam,
-			target:edit_target
+			block:block,
+			target:target,
+			pos:pos,
+			run:run,
+			unredo:unredo,
+			check:check
 		};
-	}());
+	}()),
 	
-	
-	var Set=(function(){
+	//以下各モードのレイアウト生成
+	Set:function(){
 		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
-		main.addView(WeText("ID",20));
-		main.addView(Base.id);
-		main.addView(WeText("Damage",20));
-		main.addView(Base.dam);
+		main.addView(this.Base.unredo());
+		main.addView(this.Base.run(function(){
+			process.push(['WE.Set(host)',"[Set] completed"]);
+		}));
+		main.addView(this.Base.pos());
+		main.addView(WeText("Block",20));
+		main.addView(this.Base.block());
 		main.addView(WeText("Target",20));
-		main.addView(Base.target);
+		main.addView(this.Base.target());
 		scroll.addView(main);
 		return scroll;
-	}());
-	
-	
-	var Paste=(function(){
+	},
+	Circle:function(){
 		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
+		main.addView(this.Base.unredo());
+		main.addView(WeText("Block",20));
+		main.addView(this.Base.block());
 		main.addView(WeText("Target",20));
-		main.addView(Base.target);
-		scroll.addView(Activity);
+		main.addView(this.Base.target());
+		main.addView(WeText("Radius",20));
+		var edit_rad=new EditText(Activity);
+		edit_rad.setInputType( InputType.TYPE_CLASS_NUMBER);
+		edit_rad.setText(String(host.r));
+		edit_rad.setTextColor(Color.parseColor(GuiColor.text));
+		edit_rad.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				host.r=(Number(s)>=0 ? Number(s):0);
+			}
+		});
+		main.addView(edit_rad);
+		main.addView(this.Base.check("Fill",host.fill,function(ischeck){
+			host.fill=ischeck;
+		}));
+		scroll.addView(main);
 		return scroll;
-	}());
-	
-	
-	var Setting=(function(){
+	},
+	Sphere:function(){
 		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
-		scroll.addView(Activity);
+		main.addView(this.Base.unredo());
+		main.addView(WeText("Block",20));
+		main.addView(this.Base.block());
+		main.addView(WeText("Target",20));
+		main.addView(this.Base.target());
+		main.addView(WeText("Radius",20));
+		var edit_rad=new EditText(Activity);
+		edit_rad.setInputType( InputType.TYPE_CLASS_NUMBER);
+		edit_rad.setText(String(host.r));
+		edit_rad.setTextColor(Color.parseColor(GuiColor.text));
+		edit_rad.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				host.r=(Number(s)>=0 ? Number(s):0);
+			}
+		});
+		main.addView(edit_rad);
+		main.addView(this.Base.check("Fill",host.fill,function(ischeck){
+			host.fill=ischeck;
+		}));
+		scroll.addView(main);
 		return scroll;
-	}());
-	
-	return {
-		Base:Base,
-		Set:Set,
-		Paste:Paste,
-		Setting:Setting
+	},
+	Copy:function(){
+		var scroll=new ScrollView(Activity);
+		var main=new LinearLayout(Activity);
+		main.setOrientation(1);
+		main.addView(this.Base.unredo());
+		main.addView(WeText("Target",20));
+		main.addView(this.Base.target());
+		var edit_name=new EditText(Activity);
+		edit_name.setTextColor(Color.parseColor(GuiColor.text));
+		var layout=new LinearLayout(Activity);
+		layout.setOrientation(0);
+		layout.setGravity(Gravity.CENTER);
+		layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+		var bcopy=new Button(Activity);
+		bcopy.setText("Copy");
+		bcopy.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+		bcopy.setTextColor(Color.parseColor(GuiColor.text));
+		bcopy.setBackgroundColor(Color.parseColor(GuiColor.button2));
+		bcopy.setOnClickListener(new OnClickListener(){
+			onClick:function(v){
+				var name=edit_name.getText();
+				if(name==""){
+					print("Please enter a name");
+				}else{
+					process.push(["WE.Copy(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Copy] completed"]);
+				}
+			}
+		});
+		var bcut=new Button(Activity);
+		bcut.setText("Cut");
+		bcut.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
+		bcut.setTextColor(Color.parseColor(GuiColor.text));
+		bcut.setBackgroundColor(Color.parseColor(GuiColor.button2));
+		bcut.setOnClickListener(new OnClickListener(){
+			onClick:function(v){
+				var name=edit_name.getText();
+				if(name==""){
+					print("Please enter a name");
+				}else{
+					process.push(["WE.Cut(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Cut] completed"]);
+				}
+			}
+		});
+		layout.addView(bcopy);
+		layout.addView(bcut);
+		main.addView(layout);
+		main.addView(edit_name);
+		scroll.addView(main);
+		return scroll;
+	},
+	Paste:function(){
+		var scroll=new ScrollView(Activity);
+		var main=new LinearLayout(Activity);
+		main.setOrientation(1);
+		main.addView(this.Base.unredo());
+		main.addView(WeText("Target",20));
+		main.addView(this.Base.target());
+		scroll.addView(main);
+		return scroll;
+	},
+	Setting:function(){
+		var scroll=new ScrollView(Activity);
+		var main=new LinearLayout(Activity);
+		main.setOrientation(1);
+		main.addView(WeText("Pile",20));
+		var edit_pile=new EditText(Activity);
+		edit_pile.setText(String(Option.pile));
+		edit_pile.setTextColor(Color.parseColor(GuiColor.text));
+		edit_pile.addTextChangedListener(new TextWatcher(){
+			afterTextChanged:function(s){
+				Option.pile=(Number(s)>=0 ? Number(s):0);
+				host.pile=Option.pile;
+				File.Save("Option",Option);
+			}
+		});
+		main.addView(edit_pile);
+		scroll.addView(main);
+		return scroll;
 	}
-}());
+};
 
 OnThread(function(){
 	var window=new android.widget.PopupWindow(Math.floor(screen.x/18),LayoutParams.WRAP_CONTENT);
@@ -435,8 +962,8 @@ OnThread(function(){
 	open.setOnClickListener(new OnClickListener({
 		onClick:function(v){
 			try{
-			Gui.Base.change(Gui[mList[m]]);
-			Gui.Base.show();
+				Gui.Base.change(Gui[mList[m]]());
+				Gui.Base.show();
 			}catch(e){
 				print(e);
 			}
@@ -446,16 +973,34 @@ OnThread(function(){
 	window.showAtLocation(Activity.getWindow().getDecorView(),Gravity.RIGHT|Gravity.TOP,0,0);
 });
 
+//WE用のTextViewを生成
+function WeText(text,size){
+	var textview=new TextView(Activity);
+	textview.setTextColor(Color.parseColor(GuiColor.text));
+	textview.setText(text);
+	textview.setTextSize(size);
+	return textview;
+}
+
 function WeMessage(name,message){
 	//Server.sendChat("\n[WorldEditor]\n>>"+name+"\n"+message);
-	clientMessage("\n[WorldEditor]\n>>"+name+"\n"+message);
+	clientMessage("\n§a[WorldEditor]\n§4>>"+name+"\n§r"+message);
 }
 
-function getBlock(){
+//[id,dam]を返す
+function getBlock(obj){
 	var total=0;
-	for(var i1=0;i1<host.block.lemgth;i1++)
+	for(var i1=0;i1<obj.block.length;i1++)total+=obj.block[i1][2];
+	var r=Math.floor(Math.random()*total);
+	total=0;
+	for(var i1=0;i1<obj.block.length;i1++){
+		total+=obj.block[i1][2];
+		if(r<total)return [obj.block[i1][0],obj.block[i1][1]];
+	}
+	return null;
 }
 
+//コマンドの引数が正しいかチェック(num:数値,str:文字列,anum:任意の数値,astr:任意の文字列)
 function CheckCommand(a,com){
 	for(var i=0;i<a.length;i++){
 		switch(a[i]){
@@ -488,6 +1033,17 @@ function CheckCommand(a,com){
 	return true;
 }
 
+function target(block){
+	if(block.length==0)return null;
+	var tar=[];
+	for(var i1=0;i1<=255;i1++){
+		tar[i1]=[];
+		for(var i2=0;i2<=15;i2++)tar[i1][i2]=false;
+	}
+	for(var i3=0;i3<block.length;i3++)tar[block[i3][0]][block[i3][1]]=true;
+	return tar;
+}
+
 function OnThread(fnc){
 	Activity.runOnUiThread(new java.lang.Runnable({
 		run:function(){
@@ -495,3 +1051,8 @@ function OnThread(fnc){
 		}
 	}));
 }
+
+var print=function(str){
+	android.widget.Toast.makeText(Activity,"WorldEditor:"+str,2).show();
+}
+
