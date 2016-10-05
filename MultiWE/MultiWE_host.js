@@ -46,7 +46,17 @@ var language=[
 	"Run",//5
 	"Undo",//6
 	"Redo",//7
-	"Block"//8
+	"Block",//8
+	"Target",//9
+	"Copy",//10
+	"Cut",//11
+	"Rotate",//12
+	"Option",//13
+	"Pile",//14
+	"Radius",//15
+	"Please enter a name",//16
+	"Fill",//17
+	"completed"//18
 ];
 
 var m=0;
@@ -846,12 +856,12 @@ var Gui={
 		main.setOrientation(1);
 		main.addView(this.Base.unredo());
 		main.addView(this.Base.run(function(){
-			process.push(['WE.Set(host)',"[Set] completed"]);
+			process.push(['WE.Set(host)']);
 		}));
 		main.addView(this.Base.pos());
 		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
-		main.addView(WeText("Target",20));
+		main.addView(WeText(language[9],20));
 		main.addView(this.Base.target());
 		scroll.addView(main);
 		return scroll;
@@ -863,9 +873,9 @@ var Gui={
 		main.addView(this.Base.unredo());
 		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
-		main.addView(WeText("Target",20));
+		main.addView(WeText(language[9],20));
 		main.addView(this.Base.target());
-		main.addView(WeText("Radius",20));
+		main.addView(WeText(language[15],20));
 		var edit_rad=new EditText(Activity);
 		edit_rad.setInputType( InputType.TYPE_CLASS_NUMBER);
 		edit_rad.setText(String(host.r));
@@ -876,7 +886,7 @@ var Gui={
 			}
 		});
 		main.addView(edit_rad);
-		main.addView(this.Base.check("Fill",host.fill,function(ischeck){
+		main.addView(this.Base.check(language[17],host.fill,function(ischeck){
 			host.fill=ischeck;
 		}));
 		scroll.addView(main);
@@ -889,9 +899,9 @@ var Gui={
 		main.addView(this.Base.unredo());
 		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
-		main.addView(WeText("Target",20));
+		main.addView(WeText(language[9],20));
 		main.addView(this.Base.target());
-		main.addView(WeText("Radius",20));
+		main.addView(WeText(language[15],20));
 		var edit_rad=new EditText(Activity);
 		edit_rad.setInputType( InputType.TYPE_CLASS_NUMBER);
 		edit_rad.setText(String(host.r));
@@ -913,7 +923,7 @@ var Gui={
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		main.addView(this.Base.unredo());
-		main.addView(WeText("Target",20));
+		main.addView(WeText(language[9],20));
 		main.addView(this.Base.target());
 		var edit_name=new EditText(Activity);
 		edit_name.setTextColor(Color.parseColor(GuiColor.text));
@@ -922,7 +932,7 @@ var Gui={
 		layout.setGravity(Gravity.CENTER);
 		layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 		var bcopy=new Button(Activity);
-		bcopy.setText("Copy");
+		bcopy.setText(language[10]);
 		bcopy.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 		bcopy.setTextColor(Color.parseColor(GuiColor.text));
 		bcopy.setBackgroundColor(Color.parseColor(GuiColor.button2));
@@ -930,14 +940,14 @@ var Gui={
 			onClick:function(v){
 				var name=edit_name.getText();
 				if(name==""){
-					print("Please enter a name");
+					print(language[16]);
 				}else{
-					process.push(["WE.Copy(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Copy] completed"]);
+					process.push(["WE.Copy(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Copy] "+language[18]]);
 				}
 			}
 		});
 		var bcut=new Button(Activity);
-		bcut.setText("Cut");
+		bcut.setText(language[11]);
 		bcut.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 		bcut.setTextColor(Color.parseColor(GuiColor.text));
 		bcut.setBackgroundColor(Color.parseColor(GuiColor.button2));
@@ -945,9 +955,9 @@ var Gui={
 			onClick:function(v){
 				var name=edit_name.getText();
 				if(name==""){
-					print("Please enter a name");
+					print(language[16]);
 				}else{
-					process.push(["WE.Cut(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Cut] completed"]);
+					process.push(["WE.Cut(host,"+name+');File.Save("ClipBoard",host.clipboard);',"[Cut] "+language[18]]);
 				}
 			}
 		});
@@ -963,13 +973,13 @@ var Gui={
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		main.addView(this.Base.unredo());
-		main.addView(WeText("Target",20));
+		main.addView(WeText(language[9],20));
 		main.addView(this.Base.target());
-		main.addView(WeText("Rotate",20));
+		main.addView(WeText(language[12],20));
 		main.addView(this.Base.radio(["0","90","180","270"],host.rotate,function(id){
 			host.rotate=id;
 		}));
-		main.addView(WeText("Option",20));
+		main.addView(WeText(language[13],20));
 		scroll.addView(main);
 		return scroll;
 	},
@@ -977,7 +987,7 @@ var Gui={
 		var scroll=new ScrollView(Activity);
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
-		main.addView(WeText("Pile",20));
+		main.addView(WeText(language[14],20));
 		var edit_pile=new EditText(Activity);
 		edit_pile.setText(String(Option.pile));
 		edit_pile.setTextColor(Color.parseColor(GuiColor.text));
@@ -988,7 +998,7 @@ var Gui={
 				File.Save("Option",Option);
 			}
 		});
-		main.addView(this.Base.check("Fill",host.fill,function(ischeck){
+		main.addView(this.Base.check(langage[17],host.fill,function(ischeck){
 			host.fill=ischeck;
 		}));
 		main.addView(edit_pile);
