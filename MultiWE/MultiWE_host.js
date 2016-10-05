@@ -38,9 +38,15 @@ var GuiColor={
 }
 
 var language=[
-	"mode",
-	"Pos1",
-	"Pos2"
+	"mode",//0
+	"Pos1",//1
+	"Pos2",//2
+	"Set pos1",//3
+	"Set pos2",//4
+	"Run",//5
+	"Undo",//6
+	"Redo",//7
+	"Block"//8
 ];
 
 var m=0;
@@ -716,7 +722,7 @@ var Gui={
 			pos1.setOnClickListener(new OnClickListener(){
 				onClick:function(v){
 					host.pos.s={x:Math.floor(getPlayerX()),y:Math.floor(getPlayerY())-2,z:Math.floor(getPlayerZ())};
-					print("Set pos1");
+					print(language[3]);
 				}
 			});
 			var pos2=new Button(Activity);
@@ -727,7 +733,7 @@ var Gui={
 			pos2.setOnClickListener(new OnClickListener(){
 				onClick:function(v){
 					host.pos.e={x:Math.floor(getPlayerX()),y:Math.floor(getPlayerY())-2,z:Math.floor(getPlayerZ())};
-					print("Set pos2");
+					print(language[4]);
 				}
 			});
 			layout.addView(pos1);
@@ -738,7 +744,7 @@ var Gui={
 		//runボタンを生成
 		function run(fnc){
 			var btn=new Button(Activity);
-			btn.setText("Run");
+			btn.setText(language[5]);
 			btn.setTextColor(Color.parseColor(GuiColor.text));
 			btn.setBackgroundColor(Color.parseColor(GuiColor.button2));
 			btn.setOnClickListener(new OnClickListener(){
@@ -756,7 +762,7 @@ var Gui={
 			layout.setGravity(Gravity.CENTER);
 			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 			var undo=new Button(Activity);
-			undo.setText("Undo");
+			undo.setText(language[6]);
 			undo.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 			undo.setTextColor(Color.parseColor(GuiColor.text));
 			undo.setBackgroundColor(Color.parseColor(GuiColor.button1));
@@ -766,7 +772,7 @@ var Gui={
 				}
 			});
 			var redo=new Button(Activity);
-			redo.setText("Redo");
+			redo.setText(language[7]);
 			redo.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 			redo.setTextColor(Color.parseColor(GuiColor.text));
 			redo.setBackgroundColor(Color.parseColor(GuiColor.button1));
@@ -843,7 +849,7 @@ var Gui={
 			process.push(['WE.Set(host)',"[Set] completed"]);
 		}));
 		main.addView(this.Base.pos());
-		main.addView(WeText("Block",20));
+		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
 		main.addView(WeText("Target",20));
 		main.addView(this.Base.target());
@@ -855,7 +861,7 @@ var Gui={
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		main.addView(this.Base.unredo());
-		main.addView(WeText("Block",20));
+		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
 		main.addView(WeText("Target",20));
 		main.addView(this.Base.target());
@@ -881,7 +887,7 @@ var Gui={
 		var main=new LinearLayout(Activity);
 		main.setOrientation(1);
 		main.addView(this.Base.unredo());
-		main.addView(WeText("Block",20));
+		main.addView(WeText(language[8],20));
 		main.addView(this.Base.block());
 		main.addView(WeText("Target",20));
 		main.addView(this.Base.target());
