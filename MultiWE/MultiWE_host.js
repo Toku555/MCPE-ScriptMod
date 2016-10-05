@@ -21,6 +21,8 @@ var TextWatcher=android.text.TextWatcher;
 var Switch=android.widget.Switch;
 var CompoundButton=android.widget.CompoundButton;
 var CheckBox=android.widget.CheckBox;
+var RadioGroup=android.widget.RadioGroup;
+var RadioButton=android.widget.RadioButton;
 
 var display=new android.util.DisplayMetrics();
 Activity.getWindowManager().getDefaultDisplay().getMetrics(display);
@@ -34,6 +36,12 @@ var GuiColor={
 	button1:"#22000000",
 	button2:"#22FFFFFF",
 }
+
+var language=[
+	"mode",
+	"Pos1",
+	"Pos2"
+];
 
 var m=0;
 var mList=["Set","Circle","Sphere","Copy","Paste","Setting"];
@@ -58,6 +66,7 @@ function PlayerObj(){
 	this.target=[];
 	this.pos={s:{x:0,y:0,z:0},e:{x:0,y:0,z:0}};
 	this.clipboard={};
+	this.rotate=0;
 }
 
 var host={
@@ -70,7 +79,8 @@ var host={
 	block:[],
 	target:[],
 	pos:{s:{x:0,y:0,z:0},e:{x:0,y:0,z:0}},
-	clipboard:{}
+	clipboard:{},
+	rotate:0
 };
 
 var SDcard=android.os.Environment.getExternalStorageDirectory();
@@ -119,6 +129,9 @@ var _Option=File.Load("Option");
 if(_Option==null)File.Save("Option",Option,true);else Option=_Option;
 var _ClipBoard=File.Load("ClipBoard");
 if(_ClipBoard==null)File.Save("ClipBoard",host.clipboard);else host.clipboard=_ClipBoard;
+//var _language=File.Load("Text");
+//if(_GuiColor==null)File.Save("Text",language,true);else language=_language;
+
 
 
 function newLevel(){
@@ -591,7 +604,7 @@ var Gui={
 		//モード選択のリストを出すためのボタン
 		var mode=new TextView(Activity);
 		mode.setLayoutParams(new AbsoluteLayout.LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT,0,0));
-		mode.setText("mode");
+		mode.setText(language[0]);
 		mode.setTextColor(Color.parseColor(GuiColor.text));
 		mode.setOnClickListener(new OnClickListener({
 			onClick:function(v){
@@ -696,7 +709,7 @@ var Gui={
 			layout.setGravity(Gravity.CENTER);
 			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 			var pos1=new Button(Activity);
-			pos1.setText("Pos1");
+			pos1.setText(language[1]);
 			pos1.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 			pos1.setTextColor(Color.parseColor(GuiColor.text));
 			pos1.setBackgroundColor(Color.parseColor(GuiColor.button1));
@@ -707,7 +720,7 @@ var Gui={
 				}
 			});
 			var pos2=new Button(Activity);
-			pos2.setText("Pos2");
+			pos2.setText(language[2]);
 			pos2.setLayoutParams(new LayoutParams(screen.x/8,LayoutParams.WRAP_CONTENT));
 			pos2.setTextColor(Color.parseColor(GuiColor.text));
 			pos2.setBackgroundColor(Color.parseColor(GuiColor.button1));
@@ -771,13 +784,11 @@ var Gui={
 		function check(str,checked,fnc){
 			var layout=new LinearLayout(Activity);
 			layout.setOrientation(0);
-			layout.setGravity(Gravity.CENTER);
 			layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
 			var text=WeText(str,15);
-			text.setLayoutParams(new LayoutParams(screen.x*(12/16),LayoutParams.WRAP_CONTENT));
+			text.setLayoutParams(new LayoutParams(Math.floor(screen.x/5),LayoutParams.WRAP_CONTENT));
 			var checkbox=CheckBox(Activity);
 			checkbox.setChecked(checked);
-			checkbox.setLayoutParams(new LayoutParams(screen.x*(1/4),LayoutParams.WRAP_CONTENT));
 			checkbox.setOnClickListener(new OnClickListener(){
 				onClick:function(v){
 					fnc(v.isChecked());
@@ -786,6 +797,26 @@ var Gui={
 			layout.addView(text);
 			layout.addView(checkbox);
 			return layout;
+		}
+		
+		//radioボタンの生成
+		function radio(list,checked,fnc){
+			var group=new RadioGroup(Activity);
+			group.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+			for(var i1=0;i1<list.length;i1++){
+				var rb=new RadioButton(Activity);
+				rb.setText(list[i1]);
+				rb.setId(i1);
+				rb.setTextColor(Color.parseColor(GuiColor.text));
+				group.addView(rb);
+			}
+			group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener(){
+				onCheckedChanged(group,checkedId){
+					fnc(checkedId);
+				}
+			});
+			group.check(checked);
+			return group;
 		}
 		
 		return {
@@ -797,7 +828,8 @@ var Gui={
 			pos:pos,
 			run:run,
 			unredo:unredo,
-			check:check
+			check:check,
+			radio:radio
 		};
 	}()),
 	
@@ -927,6 +959,11 @@ var Gui={
 		main.addView(this.Base.unredo());
 		main.addView(WeText("Target",20));
 		main.addView(this.Base.target());
+		main.addView(WeText("Rotate",20));
+		main.addView(this.Base.radio(["0","90","180","270"],host.rotate,function(id){
+			host.rotate=id;
+		}));
+		main.addView(WeText("Option",20));
 		scroll.addView(main);
 		return scroll;
 	},
@@ -945,6 +982,9 @@ var Gui={
 				File.Save("Option",Option);
 			}
 		});
+		main.addView(this.Base.check("Fill",host.fill,function(ischeck){
+			host.fill=ischeck;
+		}));
 		main.addView(edit_pile);
 		scroll.addView(main);
 		return scroll;
@@ -1033,6 +1073,7 @@ function CheckCommand(a,com){
 	return true;
 }
 
+//[id][dam]でターゲットに指定されているブロックの真偽を返す
 function target(block){
 	if(block.length==0)return null;
 	var tar=[];
